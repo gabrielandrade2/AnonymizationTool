@@ -1,8 +1,5 @@
 import argparse
 
-import ipadic as ipadic
-import unidic
-
 import MeCab
 from openpyxl import load_workbook
 
@@ -13,8 +10,7 @@ anonymization_count = {
     'Location': 0,
     'Organization': 0,
 }
-tagger = MeCab.Tagger(ipadic.MECAB_ARGS)
-# tagger = MeCab.Tagger(unidic.DICDIR)
+tagger = MeCab.Tagger()
 
 
 def should_deidentify(token):
@@ -45,26 +41,17 @@ def deidentify(text):
     return text
 
 if __name__ == '__main__':
-    # parser = argparse.ArgumentParser(description='Anonymize Nagoya University Hospital records')
-    # parser.add_argument('--input', type=str, help='Input file path')
-    # parser.add_argument('--output', type=str, help='Anonymized output file path')
-    # args = parser.parse_args()
-    #
-    # f = load_workbook(args.input)
-    # for sheet in f.worksheets:
-    #     for row in sheet.iter_rows():
-    #         for cell in row:
-    #             if isinstance(cell.value, str):
-    #                 cell.value = deidentify(cell.value)
-    #
-    # f.save(args.output)
-    print(deidentify("えいさいかいレイディスクリニック"))
-    print(deidentify("担当高原Dr."))
+    parser = argparse.ArgumentParser(description='Anonymize Nagoya University Hospital records')
+    parser.add_argument('--input', type=str, help='Input file path')
+    parser.add_argument('--output', type=str, help='Anonymized output file path')
+    args = parser.parse_args()
 
+    f = load_workbook(args.input)
+    for sheet in f.worksheets:
+        for row in sheet.iter_rows():
+            for cell in row:
+                if isinstance(cell.value, str):
+                    cell.value = deidentify(cell.value)
+
+    f.save(args.output)
     print(anonymization_count)
-
-    # Special rules/exceptions:
-    # 病院　クリニック
-    # Dr
-    # ちゃん
-
