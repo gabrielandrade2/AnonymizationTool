@@ -5,7 +5,7 @@
     <inspection_tool class="PyPackageRequirementsInspection" enabled="true" level="WARNING" enabled_by_default="true">
       <option name="ignoredPackages">
         <value>
-          <list size="71">
+          <list size="73">
             <item index="0" class="java.lang.String" itemvalue="pandas" />
             <item index="1" class="java.lang.String" itemvalue="scikit_learn" />
             <item index="2" class="java.lang.String" itemvalue="numpy" />
@@ -77,6 +77,8 @@
             <item index="68" class="java.lang.String" itemvalue="unidic_lite" />
             <item index="69" class="java.lang.String" itemvalue="thefuzz" />
             <item index="70" class="java.lang.String" itemvalue="xlrd" />
+            <item index="71" class="java.lang.String" itemvalue="torchvision" />
+            <item index="72" class="java.lang.String" itemvalue="torchaudio" />
           </list>
         </value>
       </option>

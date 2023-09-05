@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog
 from tkinter import ttk  # Import ttk for themed widgets
-from new_main import main
+from main import main
 
 def browse_files():
     file_paths = filedialog.askopenfilenames(filetypes=[("All Files", "*.*")], title="Select Files and Directories")
