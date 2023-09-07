@@ -113,6 +113,7 @@ if __name__ == '__main__':
     file_listbox = tk.Listbox(window, selectmode=tk.MULTIPLE, height=10, width=50, borderwidth=1, relief=tk.SOLID)
     file_listbox.grid(row=1, column=0, padx=10, pady=10)
     file_listbox.bind("<Delete>", lambda event: remove_selected_files())
+    ToolTip(file_listbox, "Files and folders to be anonymized", delay=0.5)
 
     file_listbox_buttons_frame = tk.Frame(window)
     file_listbox_buttons_frame.grid(row=1, column=1, padx=10, pady=10)
@@ -128,9 +129,11 @@ if __name__ == '__main__':
 
     output_dir_entry = tk.Entry(window, width=50, borderwidth=1, relief=tk.SOLID)
     output_dir_entry.grid(row=4, column=0, padx=10, pady=10)
+    ToolTip(output_dir_entry, "The folder to save the anonymized files", delay=0.5)
 
     select_output_button = tk.Button(window, text="Select Output Directory", command=browse_output_dir)
     select_output_button.grid(row=4, column=1, padx=10, pady=10, sticky="w")
+    ToolTip(select_output_button, "The folder to save the anonymized files", delay=1)
 
     # Advanced Options button
     advanced_options_button = tk.Button(window, text="Advanced Options", command=toggle_advanced_options)
@@ -161,13 +164,13 @@ if __name__ == '__main__':
 
     # Tooltips for advanced options
     force_anonymize_columns_tooltip = ToolTip(force_anonymize_columns_listbox,
-                                              "Names of the columns to be forcibly anonymized, regardless of the content type",
+                                              "Names of the columns to be forcibly anonymized, regardless of the content type.\n\nType and hit \"enter\" to add a column name.",
                                               delay=0.3)
     force_anonymize_tokens_tooltip = ToolTip(force_anonymize_tokens_listbox,
-                                             "Special tokens that should always be anonymized, e.g. person names that were not detected",
+                                             "Special tokens that should always be anonymized, e.g. person names that were not detected.\n\nType and hit \"enter\" to add a token.",
                                              delay=0.3)
     stop_words_tooltip = ToolTip(stop_words_listbox,
-                                 'Special words that implicate the previous word should be anonymized, e.g. "病院" or "クリニック"',
+                                 'Special words that implicate the previous word should be anonymized, e.g. "病院" or "クリニック".\n\nType and hit \"enter\" to add a stop word.',
                                  delay=0.3)
 
     # Anonymize Documents button
