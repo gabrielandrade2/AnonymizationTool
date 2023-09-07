@@ -1,7 +1,7 @@
 import argparse
 import os.path
 
-import MeCab
+import spacy
 from openpyxl import load_workbook
 
 ANONYMIZED_TAG = '[ANON]'
@@ -12,14 +12,33 @@ anonymization_count = {
     'Organization': 0,
     'Other': 0,
 }
-tagger = MeCab.Tagger()
-# tagger = MeCab.Tagger('-d /opt/homebrew/lib/mecab/dic/ipadic')
-# tagger = MeCab.Tagger('-r /dev/null -d /opt/homebrew/lib/mecab/dic/mecab-ipadic-neologd')
+
+nlp = spacy.load("ja_ginza")
 
 force_anonymize_columns = []
 force_anonymize_tokens = []
 stop_words = []
 out_dir = None
+
+def extract_longest_sequence(tokens, target):
+    all_sequences = []
+    current_sequence = []
+
+    for i, tok in enumerate(tokens):
+        num = tok.i
+        if i == 0 or num == tokens[i - 1].i + 1:
+            current_sequence.append(tok)
+        else:
+            if current_sequence:
+                all_sequences.append(current_sequence)
+            current_sequence = [tok]
+
+    if current_sequence:
+        all_sequences.append(current_sequence)
+
+    for sequence in all_sequences:
+        if target in [tok.i for tok in sequence]:
+            return sequence
 
 
 def process_file(file):
@@ -43,29 +62,28 @@ def process_file(file):
 
 
 def should_deidentify(token):
-    # Remove all proper nouns
-    if (token[1][0] == '名詞' and token[1][1] == '固有名詞'):
-        # Person name
-        if token[1][2] == '人名':
-            anonymization_count['Person'] += 1
-        # Location
-        elif token[1][2] == '地名':
-            anonymization_count['Location'] += 1
-        # Organization
-        elif token[1][2] == '一般' or token[1][3] == '一般' or token[1][2] == "地域":
-            anonymization_count['Organization'] += 1
-        else:
-            anonymization_count["Other"] += 1
+    tags = token.tag_.split('-')
+    # Remove all proper nouns detected as such
+    if token.pos_ == 'PROPN':
         return True
-    elif token[0] in force_anonymize_tokens:
+
+    # Remove 固有名詞, but only the ones detected as person name (人名), location(地名)
+    # 一般 is controversial, can be used to remove company names, but also can remove medication names
+    if '固有名詞' in tags:
+        if '人名' in tags:
+            anonymization_count['Person'] += 1
+            return True
+        elif '地名' in tags:
+            anonymization_count['Location'] += 1
+            return True
+        # elif '一般' in tags:
+        #     anonymization_count['Other'] += 1
+        #     return True
+
+    elif token.text in force_anonymize_tokens:
         anonymization_count["Special tokens"] += 1
         return True
     return False
-
-
-def get_mecab_parsing(text):
-    return [[chunk.split('\t')[0], tuple(chunk.split('\t')[1].split(','))] for chunk in
-            tagger.parse(text).splitlines()[:-1]]
 
 
 def deidentify(text: str):
@@ -76,21 +94,54 @@ def deidentify(text: str):
     :param text: The text to be anonymized.
     :return: The anonymized text.
     """
-    parsed = get_mecab_parsing(text)
+    parsed = nlp(text)
 
     # Debug print
-    for token in parsed:
-        print(token)
+    # for sent in parsed.sents:
+    #     for token in sent:
+    #         print(
+    #             token.i,
+    #             token.orth_,
+    #             token.pos_,
+    #             token.tag_,
+    #             token.dep_,
+    #             token.head.i,
+    #         )
+    #     print('EOS')
+
+    tokens = list()
+    for sent in parsed.sents:
+        for token in sent:
+            tokens.append(token)
+
 
     anonymized_text = list()
-    for i, token in enumerate(parsed):
+    for token in tokens:
         if should_deidentify(token):
             anonymized_text.append(ANONYMIZED_TAG)
-        elif token[0] in stop_words:
+            continue
+
+        # Check for compound nouns. If some part of the compound noun is a proper noun, remove it
+        if token.dep_ == 'compound' and (token.pos_ == 'NOUN' or token.pos_ == 'PROPN' or '名詞' in token.head.tag_):
+            head = token.head
+            children = list(filter(lambda x: x.dep_ == 'compound', list(head.children)))
+            neighbors = extract_longest_sequence(children, token.i)
+            neighbors = list(filter(lambda x: x.i != token.i, neighbors))
+            if neighbors:
+                anon = False
+                for neighbor in neighbors:
+                    if should_deidentify(neighbor):
+                        anonymized_text.append(ANONYMIZED_TAG)
+                        anon = True
+                        break
+                if anon:
+                    continue
+
+        if token.text in stop_words:
             anonymized_text[-1] = ANONYMIZED_TAG
-            anonymized_text.append(token[0])
+            anonymized_text.append(token.text)
         else:
-            anonymized_text.append(token[0])
+            anonymized_text.append(token.text)
     return "".join(anonymized_text)
 
 
@@ -160,4 +211,6 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    main(args.input, args.output, args.force_anonymize_columns, args.force_anonymize_tokens, args.stop_words)
+    count, files = main(args.input, args.output, args.force_anonymize_columns, args.force_anonymize_tokens, args.stop_words)
+    print("Processed files:", files)
+    print("Anonymized tokens:", count)
