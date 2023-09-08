@@ -1,7 +1,8 @@
 import argparse
+import csv
 import os.path
 
-import MeCab
+import spacy
 from openpyxl import load_workbook
 
 ANONYMIZED_TAG = '[ANON]'
@@ -9,17 +10,52 @@ ANONYMIZED_TAG = '[ANON]'
 anonymization_count = {
     'Person': 0,
     'Location': 0,
-    'Organization': 0,
     'Other': 0,
+    'Stop-word tokens': 0,
+    'Forced anonymization': 0,
 }
-tagger = MeCab.Tagger()
-# tagger = MeCab.Tagger('-d /opt/homebrew/lib/mecab/dic/ipadic')
-# tagger = MeCab.Tagger('-r /dev/null -d /opt/homebrew/lib/mecab/dic/mecab-ipadic-neologd')
+
+nlp = spacy.load("ja_ginza")
 
 force_anonymize_columns = []
 force_anonymize_tokens = []
-stop_words = []
+#Default stop words
+stop_words = ['病院', 'クリニック', 'Dr']
 out_dir = None
+
+# Load name list csv
+names_list = []
+with open("names_list.csv") as csv_file:
+    csv_reader = csv.reader(csv_file)
+
+    # Skip the header row if it exists.
+    header = next(csv_reader, None)
+
+    # Iterate through each row in the CSV file and append it to the list.
+    for row in csv_reader:
+        names_list.append(row[0])
+# Filter out single character names
+names_list = set(filter(lambda x: len(x) > 1, names_list))
+
+def extract_longest_sequence(tokens, target):
+    all_sequences = []
+    current_sequence = []
+
+    for i, tok in enumerate(tokens):
+        num = tok.i
+        if i == 0 or num == tokens[i - 1].i + 1:
+            current_sequence.append(tok)
+        else:
+            if current_sequence:
+                all_sequences.append(current_sequence)
+            current_sequence = [tok]
+
+    if current_sequence:
+        all_sequences.append(current_sequence)
+
+    for sequence in all_sequences:
+        if target in [tok.i for tok in sequence]:
+            return sequence
 
 
 def process_file(file):
@@ -33,7 +69,6 @@ def process_file(file):
                 continue
             for cell in column[1:]:
                 if isinstance(cell.value, str):
-                    print(cell)
                     cell.value = deidentify(cell.value)
 
     out = os.path.join(out_dir, filename)
@@ -43,29 +78,35 @@ def process_file(file):
 
 
 def should_deidentify(token):
-    # Remove all proper nouns
-    if (token[1][0] == '名詞' and token[1][1] == '固有名詞'):
-        # Person name
-        if token[1][2] == '人名':
-            anonymization_count['Person'] += 1
-        # Location
-        elif token[1][2] == '地名':
-            anonymization_count['Location'] += 1
-        # Organization
-        elif token[1][2] == '一般' or token[1][3] == '一般' or token[1][2] == "地域":
-            anonymization_count['Organization'] += 1
-        else:
-            anonymization_count["Other"] += 1
+    if token.text in names_list:
+        anonymization_count['Person'] += 1
         return True
-    elif token[0] in force_anonymize_tokens:
-        anonymization_count["Special tokens"] += 1
+
+    tags = token.tag_.split('-')
+    # Remove 固有名詞, but only the ones detected as person name (人名), location(地名)
+    # 一般 is controversial, can be used to remove company names, but also can remove medication names
+    if '固有名詞' in tags:
+        if '人名' in tags:
+            anonymization_count['Person'] += 1
+            return True
+        elif '地名' in tags:
+            anonymization_count['Location'] += 1
+            return True
+        # elif '一般' in tags:
+        # TODO: Test if these can be removed safely in pair with stop-words
+
+        #     anonymization_count['Other'] += 1
+        #     return True
+
+    # Remove all proper nouns detected as such
+    if token.pos_ == 'PROPN' and '一般' not in tags:
+        anonymization_count['Other'] += 1
+        return True
+
+    elif token.text in force_anonymize_tokens:
+        anonymization_count["Force Anonymize Tokens"] += 1
         return True
     return False
-
-
-def get_mecab_parsing(text):
-    return [[chunk.split('\t')[0], tuple(chunk.split('\t')[1].split(','))] for chunk in
-            tagger.parse(text).splitlines()[:-1]]
 
 
 def deidentify(text: str):
@@ -76,21 +117,77 @@ def deidentify(text: str):
     :param text: The text to be anonymized.
     :return: The anonymized text.
     """
-    parsed = get_mecab_parsing(text)
+    parsed = nlp(text)
 
     # Debug print
-    for token in parsed:
-        print(token)
+    # for sent in parsed.sents:
+    #     for token in sent:
+    #         print(
+    #             token.i,
+    #             token.orth_,
+    #             token.pos_,
+    #             token.tag_,
+    #             token.dep_,
+    #             token.head.i,
+    #         )
+    #     print('EOS')
 
-    anonymized_text = list()
-    for i, token in enumerate(parsed):
+    tokens = []
+    for sent in parsed.sents:
+        for token in sent:
+            tokens.append(token)
+
+    it = iter(enumerate(tokens))
+    anonymized_text = []
+    for i, token in it:
+        anon = False
+
         if should_deidentify(token):
-            anonymized_text.append(ANONYMIZED_TAG)
-        elif token[0] in stop_words:
-            anonymized_text[-1] = ANONYMIZED_TAG
-            anonymized_text.append(token[0])
-        else:
-            anonymized_text.append(token[0])
+            if len(anonymized_text) == 0 or anonymized_text[-1] != ANONYMIZED_TAG:
+                anonymized_text.append(ANONYMIZED_TAG)
+            anon = True
+
+        # Check for compound nouns. If some part of the compound noun is a proper noun, remove it
+        compound_end = -1
+        if token.dep_ == 'compound' and (token.pos_ == 'NOUN' or token.pos_ == 'PROPN' or '名詞' in token.head.tag_):
+            head = token.head
+            children = list(filter(lambda x: x.dep_ == 'compound', list(head.children)))
+            neighbors = extract_longest_sequence(children, token.i)
+            neighbors = list(filter(lambda x: x.i != token.i, neighbors))
+            if neighbors:
+                compound_end = neighbors[-1].i
+                for neighbor in neighbors:
+                    if should_deidentify(neighbor):
+                        if len(anonymized_text) == 0 or anonymized_text[-1] != ANONYMIZED_TAG:
+                            anonymized_text.append(ANONYMIZED_TAG)
+                        anon = True
+                        break
+
+
+        # if next token (or after the compound) is a stop word,
+        if compound_end != -1 and len(tokens) > (compound_end + 1) and tokens[compound_end + 1].text in stop_words:
+            to_anon = False
+            for j in range(i, compound_end + 1):
+                if tokens[j].pos_ == 'PROPN' or '名詞' in tokens[j].tag_ or tokens[j].pos_ == 'NOUN':
+                    to_anon = True
+            if to_anon:
+                anonymization_count["Stop-word tokens"] += 1
+                anonymized_text.append(ANONYMIZED_TAG)
+                anon = True
+                for j in range(i, compound_end + 1):
+                    i, token = next(it)
+                anonymized_text.append(token.text)
+
+        elif len(tokens) > (i + 1) and tokens[i + 1].text in stop_words:
+            if token.pos_ == 'PROPN' or '名詞' in token.tag_ or token.pos_ == 'NOUN':
+                anonymization_count["Stop-word tokens"] += 1
+                anonymized_text.append(ANONYMIZED_TAG)
+                anon = True
+                i, token = next(it)
+                anonymized_text.append(token.text)
+
+        if not anon:
+            anonymized_text.append(token.text)
     return "".join(anonymized_text)
 
 
@@ -156,8 +253,12 @@ if __name__ == '__main__':
     parser.add_argument('--force_anonymize_tokens', type=str, nargs='+',
                         help='Special tokens that should always be anonymized')
     parser.add_argument('--stop_words', type=str, nargs='+',
-                        help='Special words that implicate the previous word should be anonymized, e.g. "病院" or "クリニック"')
+                        help='''Special words that implicate the previous word should be anonymized, e.g. "病院" or "クリニック" \n
+                        Default: {}'''.format(stop_words))
 
     args = parser.parse_args()
 
-    main(args.input, args.output, args.force_anonymize_columns, args.force_anonymize_tokens, args.stop_words)
+    count, files = main(args.input, args.output, args.force_anonymize_columns, args.force_anonymize_tokens, args.stop_words)
+    print("Processed files:", files)
+    print("Anonymized tokens:", count)
+
