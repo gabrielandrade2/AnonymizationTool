@@ -121,17 +121,17 @@ def deidentify(text: str):
     parsed = nlp(text)
 
     # Debug print
-    for sent in parsed.sents:
-        for token in sent:
-            print(
-                token.i,
-                token.orth_,
-                token.pos_,
-                token.tag_,
-                token.dep_,
-                token.head.i,
-            )
-        print('EOS')
+    # for sent in parsed.sents:
+    #     for token in sent:
+    #         print(
+    #             token.i,
+    #             token.orth_,
+    #             token.pos_,
+    #             token.tag_,
+    #             token.dep_,
+    #             token.head.i,
+    #         )
+    #     print('EOS')
 
     tokens = []
     for sent in parsed.sents:
