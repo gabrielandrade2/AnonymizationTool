@@ -1,7 +1,7 @@
 # AnonymizationTool
 A simple Anonymization Tool for Japanese texts. (In development)
 
-It uses Mecab POS tagging to identify potential `Proper Nouns` and replace those with a `[ANON]` tag.
+It uses [Ginza](https://github.com/megagonlabs/ginza) POS tagging to identify potential `Proper Nouns` and replace those with a `[ANON]` tag.
 
 ## Execution
 
