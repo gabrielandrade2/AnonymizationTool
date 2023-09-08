@@ -1,6 +1,7 @@
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import filedialog, ttk
 from main import main
+from main import stop_words as default_stop_words
 from tktooltip import ToolTip
 
 
@@ -14,6 +15,9 @@ class ListboxEditable(tk.Frame):
         self.sb = tk.Scrollbar(self)
         self.sb.pack(side=tk.RIGHT, fill=tk.Y)
         self.E1 = tk.Entry(self)
+        self.text_color = self.E1.cget("fg")
+        self.E1.config(fg='grey')
+        self.E1.insert(0, "Type here...")
         self.E1.pack()
 
         self.list = []
@@ -27,10 +31,13 @@ class ListboxEditable(tk.Frame):
 
         self.b1.bind('<Delete>', self.remove_item)
         self.E1.bind('<Return>', self.set_item)
+        self.E1.bind('<FocusIn>', self.handle_focus_in)
+        self.E1.bind('<FocusOut>', self.handle_focus_out)
 
     def set_entry_text(self, text):
         self.E1.delete(0, tk.END)
         self.E1.insert(0, text)
+        self.root.focus()
 
     def set_item(self, event):
         text = self.E1.get()
@@ -40,14 +47,33 @@ class ListboxEditable(tk.Frame):
         self.list.append(text)
 
         self.v.set(self.list)
+        self.root.focus()
 
     def remove_item(self, event):
         try:
             index = self.b1.curselection()[0]
             self.list.pop(index)
             self.v.set(self.list)
+            self.root.focus()
         except IndexError:
             pass
+
+    def add_list(self, l):
+        self.list.extend(l)
+        self.v.set(self.list)
+
+    def handle_focus_in(self, _):
+        if self.E1.cget("fg") == self.text_color:
+            return
+        self.E1.delete(0, tk.END)
+        self.E1.config(fg=self.text_color)
+
+    def handle_focus_out(self, _):
+        if (self.E1.get()):
+            return
+        self.E1.delete(0, tk.END)
+        self.E1.config(fg='grey')
+        self.E1.insert(0, "Type here...")
 
 
 def browse_files():
@@ -92,12 +118,13 @@ def anonymize_documents():
 
 
 def toggle_advanced_options():
-    if advanced_options_button["text"] == "Advanced Options":
-        advanced_options_button["text"] = "Hide Options"
-        advanced_options_frame.grid(row=6, columnspan=2, pady=20)
+    if advanced_options_button["text"] == "Show Advanced Options":
+        advanced_options_button["text"] = "Hide Advanced Options"
+        advanced_options_frame.grid(row=6, columnspan=2)
+        advanced_options_frame.grid(row=6, columnspan=2)
 
     else:
-        advanced_options_button["text"] = "Advanced Options"
+        advanced_options_button["text"] = "Show Advanced Options"
         advanced_options_frame.grid_forget()
 
 
@@ -136,8 +163,8 @@ if __name__ == '__main__':
     ToolTip(select_output_button, "The folder to save the anonymized files", delay=1)
 
     # Advanced Options button
-    advanced_options_button = tk.Button(window, text="Advanced Options", command=toggle_advanced_options)
-    advanced_options_button.grid(row=5, columnspan=2, pady=20)
+    advanced_options_button = tk.Button(window, text="Show Advanced Options", command=toggle_advanced_options)
+    advanced_options_button.grid(row=5, columnspan=2, pady=10)
     advanced_options_frame = tk.Frame(window)
 
     # Labels for advanced options
@@ -146,21 +173,24 @@ if __name__ == '__main__':
     stop_words_label = tk.Label(advanced_options_frame, text="Stop Words:")
 
     # Listboxes for advanced options
-    force_anonymize_columns_listbox = ListboxEditable(advanced_options_frame, selectmode=tk.MULTIPLE, height=3,
+    force_anonymize_columns_listbox = ListboxEditable(advanced_options_frame, selectmode=tk.MULTIPLE, height=6,
                                                       width=20, borderwidth=1,
                                                       relief=tk.SOLID)
-    force_anonymize_tokens_listbox = ListboxEditable(advanced_options_frame, selectmode=tk.MULTIPLE, height=3, width=20,
+    force_anonymize_tokens_listbox = ListboxEditable(advanced_options_frame, selectmode=tk.MULTIPLE, height=6, width=20,
                                                      borderwidth=1,
                                                      relief=tk.SOLID)
-    stop_words_listbox = ListboxEditable(advanced_options_frame, selectmode=tk.MULTIPLE, height=3, width=20,
+    stop_words_listbox = ListboxEditable(advanced_options_frame, selectmode=tk.MULTIPLE, height=6, width=20,
                                          borderwidth=1,
                                          relief=tk.SOLID)
-    force_anonymize_columns_label.grid(row=0, column=0, padx=10, pady=10)
-    force_anonymize_tokens_label.grid(row=0, column=1, padx=10, pady=10)
-    stop_words_label.grid(row=0, column=2, padx=10, pady=1)
-    force_anonymize_columns_listbox.grid(row=1, column=0, padx=10, pady=1)
-    force_anonymize_tokens_listbox.grid(row=1, column=1, padx=10, pady=10)
-    stop_words_listbox.grid(row=1, column=2, padx=10, pady=10)
+    force_anonymize_columns_label.grid(row=0, column=0, padx=10)
+    force_anonymize_tokens_label.grid(row=0, column=1, padx=10)
+    stop_words_label.grid(row=0, column=2, padx=10)
+    force_anonymize_columns_listbox.grid(row=1, column=0, padx=10)
+    force_anonymize_tokens_listbox.grid(row=1, column=1, padx=10)
+    stop_words_listbox.grid(row=1, column=2, padx=10)
+
+    # Set default values for advanced options
+    stop_words_listbox.add_list(default_stop_words)
 
     # Tooltips for advanced options
     force_anonymize_columns_tooltip = ToolTip(force_anonymize_columns_listbox,
@@ -179,7 +209,7 @@ if __name__ == '__main__':
 
     # Results text area
     results_label = tk.Label(window, text="Results:")
-    results_label.grid(row=8, column=0, padx=10, pady=10, sticky="w")
+    results_label.grid(row=8, column=0, padx=10, sticky="w")
 
     results_text = tk.Text(window, height=10, width=50, state=tk.DISABLED, borderwidth=1, relief=tk.SOLID)
     results_text.grid(row=9, column=0, padx=10, pady=10, columnspan=2, sticky="nsew")
