@@ -69,7 +69,6 @@ def process_file(file):
                 continue
             for cell in column[1:]:
                 if isinstance(cell.value, str):
-                    print(cell)
                     cell.value = deidentify(cell.value)
 
     out = os.path.join(out_dir, filename)

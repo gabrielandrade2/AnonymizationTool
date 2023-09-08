@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import filedialog, ttk
+from tkinter import filedialog
 from main import main
 from main import stop_words as default_stop_words
 from tktooltip import ToolTip
