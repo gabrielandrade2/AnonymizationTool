@@ -20,7 +20,7 @@ nlp = spacy.load("ja_ginza")
 force_anonymize_columns = []
 force_anonymize_tokens = []
 #Default stop words
-stop_words = ['病院', 'クリニック', 'Dr']
+stop_words = ['病院', 'クリニック', 'Dr', 'ちゃん', 'さん', 'くん']
 out_dir = None
 
 # Load name list csv
