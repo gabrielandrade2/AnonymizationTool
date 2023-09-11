@@ -98,8 +98,13 @@ def anonymize_documents():
     results_text.config(state=tk.NORMAL)
     results_text.delete(1.0, tk.END)
     try:
+        input_files = file_listbox.get(0, tk.END)
+        if not input_files:
+            raise Exception("No input files selected")
+        if not output_dir_entry.get():
+            raise Exception("No output directory selected")
 
-        anonymization_count, files = main(file_listbox.get(0, tk.END),
+        anonymization_count, files = main(input_files,
                                           output_dir_entry.get(),
                                           force_anonymize_columns=force_anonymize_columns_listbox.list,
                                           force_anonymize_tokens=force_anonymize_tokens_listbox.list,
