@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import filedialog
-from main import main
+from main import run
 from main import stop_words as default_stop_words
 from tktooltip import ToolTip
 
@@ -104,7 +104,7 @@ def anonymize_documents():
         if not output_dir_entry.get():
             raise Exception("No output directory selected")
 
-        anonymization_count, files = main(input_files,
+        anonymization_count, files = run(input_files,
                                           output_dir_entry.get(),
                                           force_anonymize_columns=force_anonymize_columns_listbox.list,
                                           force_anonymize_tokens=force_anonymize_tokens_listbox.list,
@@ -136,7 +136,7 @@ def toggle_advanced_options():
 if __name__ == '__main__':
     # Create the main window
     window = tk.Tk()
-    window.title("Anonymizer Tool")
+    window.title("Anonymization Tool v0.2")
 
     # Create and configure widgets
     file_label = tk.Label(window, text="Selected Files/Directories:")
@@ -178,13 +178,13 @@ if __name__ == '__main__':
     stop_words_label = tk.Label(advanced_options_frame, text="Stop Words:")
 
     # Listboxes for advanced options
-    force_anonymize_columns_listbox = ListboxEditable(advanced_options_frame, selectmode=tk.MULTIPLE, height=6,
+    force_anonymize_columns_listbox = ListboxEditable(advanced_options_frame, selectmode=tk.SINGLE, height=6,
                                                       width=20, borderwidth=1,
                                                       relief=tk.SOLID)
-    force_anonymize_tokens_listbox = ListboxEditable(advanced_options_frame, selectmode=tk.MULTIPLE, height=6, width=20,
+    force_anonymize_tokens_listbox = ListboxEditable(advanced_options_frame, selectmode=tk.SINGLE, height=6, width=20,
                                                      borderwidth=1,
                                                      relief=tk.SOLID)
-    stop_words_listbox = ListboxEditable(advanced_options_frame, selectmode=tk.MULTIPLE, height=6, width=20,
+    stop_words_listbox = ListboxEditable(advanced_options_frame, selectmode=tk.SINGLE, height=6, width=20,
                                          borderwidth=1,
                                          relief=tk.SOLID)
     force_anonymize_columns_label.grid(row=0, column=0, padx=10)
@@ -199,13 +199,13 @@ if __name__ == '__main__':
 
     # Tooltips for advanced options
     force_anonymize_columns_tooltip = ToolTip(force_anonymize_columns_listbox,
-                                              "Names of the columns to be forcibly anonymized, regardless of the content type.\n\nType and hit \"enter\" to add a column name.",
+                                              "Names of the columns to be forcibly anonymized, regardless of the content type.\n\nType and hit \"enter\" to add a column name.\nClick and hit \"delete\" to remove.",
                                               delay=0.3)
     force_anonymize_tokens_tooltip = ToolTip(force_anonymize_tokens_listbox,
-                                             "Special tokens that should always be anonymized, e.g. person names that were not detected.\n\nType and hit \"enter\" to add a token.",
+                                             "Special tokens that should always be anonymized, e.g. person names that were not detected.\n\nType and hit \"enter\" to add a token.\nClick and hit \"delete\" to remove.",
                                              delay=0.3)
     stop_words_tooltip = ToolTip(stop_words_listbox,
-                                 'Special words that implicate the previous word should be anonymized, e.g. "病院" or "クリニック".\n\nType and hit \"enter\" to add a stop word.',
+                                 'Special words that implicate the previous word should be anonymized, e.g. "病院" or "クリニック".\n\nType and hit \"enter\" to add a stop word.\nClick and hit \"delete\" to remove.',
                                  delay=0.3)
 
     # Anonymize Documents button

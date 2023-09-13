@@ -1,7 +1,6 @@
 import argparse
 import csv
 import os.path
-
 import spacy
 from openpyxl import load_workbook
 
@@ -25,7 +24,7 @@ out_dir = None
 
 # Load name list csv
 names_list = []
-with open("names_list.csv") as csv_file:
+with open("names_list.csv", encoding="utf8") as csv_file:
     csv_reader = csv.reader(csv_file)
 
     # Skip the header row if it exists.
@@ -72,8 +71,7 @@ def process_file(file):
                     cell.value = deidentify(cell.value)
 
     out = os.path.join(out_dir, filename)
-    if os.path.exists(out):
-        out = out.replace(".xlsx", "_anon.xlsx")
+    out = out.replace(".xlsx", "_anon.xlsx")
     f.save(out)
 
 
@@ -203,7 +201,7 @@ def process_directory(directory):
     return [os.path.join(directory, f) for f in filtered]
 
 
-def main(input: str, output: str, force_anonymize_columns: list = None, force_anonymize_tokens: list = None,
+def run(input: str, output: str, force_anonymize_columns: list = None, force_anonymize_tokens: list = None,
          stop_words: list = None):
     """
     Main function for anonymizing Excel files, called when executing this script directly.
@@ -258,7 +256,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    count, files = main(args.input, args.output, args.force_anonymize_columns, args.force_anonymize_tokens, args.stop_words)
+    count, files = run(args.input, args.output, args.force_anonymize_columns, args.force_anonymize_tokens, args.stop_words)
     print("Processed files:", files)
     print("Anonymized tokens:", count)
 
