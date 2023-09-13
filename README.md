@@ -5,8 +5,10 @@ A simple Anonymization Tool for Japanese texts.
 It uses [Ginza](https://github.com/megagonlabs/ginza) POS tagging to identify potential `Proper Nouns` and replace those
 with a `[ANON]` tag.
 
-The method was specifically tunned to annonimize Japanese clinical texts, aiming to remove patient and doctor personal
-information, such as names and addresses, and also institution (hopsital, clinic) names and locations.
+The method was specifically tunned to anonymize Japanese clinical texts, aiming to remove patient and doctor personal
+information, such as names and addresses, and also institution (hospital, clinic) names and locations.
+
+Currently, this software only supports Excel (.xls/xlsx) files as input.
 
 ## Execution
 
